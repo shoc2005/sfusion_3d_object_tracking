@@ -72,7 +72,16 @@ int main(int argc, const char *argv[])
     double sensorFrameRate = 10.0 / imgStepWidth; // frames per second for Lidar and camera
     int dataBufferSize = 2;       // no. of images which are held in memory (ring buffer) at the same time
     vector<DataFrame> dataBuffer; // list of data frames which are held in memory at the same time
-    bool bVis = false;            // visualize results
+    bool bVis = true;            // visualize results
+
+    std::map<std::string, int> mapKeyPointDetector;
+  	mapKeyPointDetector.insert(std::make_pair("SHITOMASI", 0));
+  	mapKeyPointDetector.insert(std::make_pair("HARRIS", 1));
+  	mapKeyPointDetector.insert(std::make_pair("FAST", 2));
+  	mapKeyPointDetector.insert(std::make_pair("BRISK", 3));
+  	mapKeyPointDetector.insert(std::make_pair("ORB", 4)); 
+	mapKeyPointDetector.insert(std::make_pair("AKAZE", 5));
+  	mapKeyPointDetector.insert(std::make_pair("SIFT", 6));
 
     /* MAIN LOOP OVER ALL IMAGES */
 
@@ -132,7 +141,7 @@ int main(int argc, const char *argv[])
         bVis = true;
         if(bVis)
         {
-            show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
+            show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(1000, 1000), true);
         }
         bVis = false;
 
@@ -151,14 +160,36 @@ int main(int argc, const char *argv[])
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
         string detectorType = "SHITOMASI";
+        float t_detector =0.0;
 
-        if (detectorType.compare("SHITOMASI") == 0)
+        switch (mapKeyPointDetector.find(detectorType)->second)
         {
-            detKeypointsShiTomasi(keypoints, imgGray, false);
-        }
-        else
-        {
-            //...
+              case 0:
+                  detKeypointsShiTomasi(keypoints, imgGray, t_detector, bVis);
+                  break;
+              case 1:
+                  detKeypointsHarris(keypoints, imgGray, t_detector, bVis);
+                  break;
+              case 2:
+                  detKeypointsFast(keypoints, imgGray, t_detector, bVis);
+                  break;
+              case 3:
+                  detKeypointsBrisk(keypoints, imgGray, t_detector, bVis);
+                  break;
+              case 4:
+                  detKeypointsOrb(keypoints, imgGray, t_detector, bVis);
+                  break;
+              case 5:
+                  detKeypointsAkaze(keypoints, imgGray, t_detector, bVis);
+                  break;
+              case 6:
+                  detKeypointsSift(keypoints, imgGray, t_detector, bVis);
+                  break;         
+              default:
+                  cout << "Detector is not determined!" << endl;
+              	  return 0;
+                  break;
+
         }
 
         // optional : limit number of keypoints (helpful for debugging and learning)
@@ -185,7 +216,8 @@ int main(int argc, const char *argv[])
 
         cv::Mat descriptors;
         string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-        descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
+        float t_descriptor=0.0;
+        descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType, t_descriptor);
 
         // push descriptors for current frame to end of data buffer
         (dataBuffer.end() - 1)->descriptors = descriptors;
